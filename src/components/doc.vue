@@ -198,6 +198,20 @@ export default {
         }
       }
     },
+    format45: function(val, v2) {
+      if (isNaN(val) || val == undefined || val == null) {
+        return null;
+      }
+      return Math.round(val * v2) / v2;
+    },
+    timechange: function(timevalue) {
+      let timestamp = new Date(timevalue).getTime(); // 使用上面三种均可以实现
+      //dataString是整数，否则要parseInt转换
+      let time = new Date(timestamp);
+      let year = time.getFullYear();
+      let month = time.getMonth() + 1;
+      return year + "年" + (month < 10 ? "0" + month : month) + "月";
+    },
     downloadExl: function(json, downName, type) {
       // 导出到excel
       let worksheet = "Sheet1";
@@ -206,31 +220,34 @@ export default {
       let addr = json.addr;
       let str = "";
       //循环遍历，每行加入tr标签，每个单元格加td标签
+      let acmoncapacity = 0; //当月运行容量
       let acmu = 0; //实际用量和
-      // paymentele: null, //补缴基本电费
-      //     defaulttele: null, //违约补缴电费
       let paymentelemum = 0; //补缴基本电费和
       let defaulttelemum = 0; //违约电费和
       let Subtotalcombined = 0; // 小计合计
       let heightcol = 7 + json.children.length + 1;
+      let capacity = 0;
       for (const item of json.children) {
         let submoney = item.defaulttele + item.paymentele; //单月电费小计
+        capacity = item.capacity; //合同容量
         Subtotalcombined = Subtotalcombined + submoney; //单对象电费累计
+        acmoncapacity = acmoncapacity + item.moncapacity; //实际使用量合计
         acmu = acmu + item.actualcapacity; //实际使用量合计
         paymentelemum = paymentelemum + item.paymentele; //补缴基本电费和
         defaulttelemum = defaulttelemum + item.defaulttele; //违约电费和
-        str += "<tr style=" + "color:red;text-align:center;" + ">";
-        str += `<td>${item.time}</td>`;
-        str += `<td>${item.capacity}</td>`;
+        let start_time = this.timechange(item.time);
+        str += "<tr  style=" + "color:red;text-align:center;"+"height="+"35" + ">";
+        str += `<td>${start_time}</td>`;
+        str += `<td>${item.moncapacity}</td>`;
         str += `<td>${item.actualcapacity}</td>`;
         str += `<td>${item.paymentele}</td>`;
         str += `<td>${item.defaulttele}</td>`;
         str += `<td>${submoney}</td>`;
         str += "</tr>";
       }
-      str += "<tr style=" + "text-align:center;" + ">";
+      str += "<tr style=" + "text-align:center;" +"height="+"35"+ ">";
       str += `<td>合计</td>`;
-      str += `<td>&nbsp;</td>`;
+      str += `<td>${acmoncapacity}</td>`;
       str += `<td>${acmu}</td>`;
       str += `<td>${paymentelemum}</td>`;
       str += `<td>${defaulttelemum}</td>`;
@@ -247,7 +264,10 @@ export default {
         </x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->
         </head><body>
         <table border="1" cellspacing="0"  width="700" style="font-size: 14px;border-spacing: 0px;border-collapse:collapse;text-align:center;">
-            <tr>
+            <tr height="45">
+              <th colspan="7" style="border: 0px solid black;font-size:20px;font-weight:bold;">扬州供电公司违约用电处理通知单</th>
+            </tr>
+            <tr height="45">
               <th width="50">户名</th>
               <th width="140" style="color:red">${name}</th>
               <th width="80">户号</th>
@@ -255,23 +275,23 @@ export default {
               <th width="100">地址</th>
               <th colspan="2" width="200" style="color:red">${addr}</th>
             </tr>
-            <tr>
+            <tr height="180">
               <td rowspan="${heightcol}"></td>
               <td
                 colspan="6"
                 style="font-size: 16px;text-align: left;"
-              >该户合同容量为250kVA，擅自超过合同约定容量用电，根据《电力法》 第四十条规定： 违反本条例第三十条规定，违章用电的，供电企业可以根据违章事实和造成的后果追缴电费，并按照国务院电力管理部门的规定加收电费和国家规定的其他费用；情节严重的，可以按照国家规定的程序停止供电。现根据《供电营业规则》第一百条规定：擅自超过本合同约定容量用电的，属于两部制电价的用户，按三倍私增容量基本电费计付违约使用电费；属单一制电价的用户，按擅自使用或启封设备容量每千伏安/千瓦50元支付违约使用电费；现补缴基本电费及违约使用电费，计算如下表，并请办理增容手续。</td>
+              >该户合同容量为${capacity}kVA，擅自超过合同约定容量用电，根据《电力法》 第四十条规定： 违反本条例第三十条规定，违章用电的，供电企业可以根据违章事实和造成的后果追缴电费，并按照国务院电力管理部门的规定加收电费和国家规定的其他费用；情节严重的，可以按照国家规定的程序停止供电。现根据《供电营业规则》第一百条规定：擅自超过本合同约定容量用电的，属于两部制电价的用户，按三倍私增容量基本电费计付违约使用电费；属单一制电价的用户，按擅自使用或启封设备容量每千伏安/千瓦50元支付违约使用电费；现补缴基本电费及违约使用电费，计算如下表，并请办理增容手续。</td>
             </tr>
             <tr height='60' style="text-align: center;">
               <td   >使用月份</td>
-              <td  >合同容量（kVA）</td>
+              <td  >当月运行容量（kVA）</td>
               <td  >实际使用容量（kVA）</td>
               <td  >补缴基本电费（元）</td>
               <td  >违约使用电费（元）</td>
               <td  > 小计（元）</td>
             </tr>
             ${str}
-            <tr>
+            <tr height="30">
               <td style="border: 0px solid black;">&nbsp;</td>
               <td style="border: 0px solid black;">&nbsp;</td>
               <td style="border: 0px solid black;">&nbsp;</td>
@@ -279,7 +299,7 @@ export default {
               <td>&nbsp;</td>
               <td>&nbsp;</td>
             </tr>
-            <tr style="text-align: center;">
+            <tr height="30" style="text-align: center;">
               <td style="border: 0px solid black;">&nbsp;</td>
               <td style="border: 0px solid black;">&nbsp;</td>
               <td style="border: 0px solid black;">&nbsp;</td>
@@ -288,16 +308,16 @@ export default {
               <td style="border-left: 0px solid black;">&nbsp;</td>
               
             </tr>
-            <tr style="text-align: center;">
+            <tr height="30" style="text-align: center;">
               <td  style="border: 0px solid black;">&nbsp;</td>
               <td style="border: 0px solid black;">&nbsp;</td>
               <td style="border: 0px solid black;">&nbsp;</td>
-              <td>检测人</td>
+              <td>检查人</td>
               <td style="border-right: 0px solid black;">签章</td>
               <td style="border-left: 0px solid black;">&nbsp;</td>
               
             </tr>
-            <tr style="text-align: center;">
+            <tr height="30" style="text-align: center;">
               <td style="border: 0px solid black;">&nbsp;</td>
               <td style="border: 0px solid black;">&nbsp;</td>
               <td style="border: 0px solid black;">&nbsp;</td>
@@ -305,15 +325,15 @@ export default {
               <td style="border-right: 0px solid black;">签章</td>
               <td style="border-left: 0px solid black;">&nbsp;</td>
             </tr>
-            <tr style="text-align: center;">
+            <tr height="30" style="text-align: center;">
               <td style="border-top: 0px solid black;border-left: 0px solid black;border-right: 0px solid black;">&nbsp;</td>
               <td style="border-top: 0px solid black;border-left: 0px solid black;border-right: 0px solid black;">&nbsp;</td>
               <td style="border-top: 0px solid black;border-left: 0px solid black;border-right: 0px solid black;">&nbsp;</td>
-              <td>年</td>
-              <td>月</td>
-              <td>日</td>
+              <td style="border-right: 0px solid black;">年</td>
+              <td style="border-right: 0px solid black;border-left: 0px solid black;">月</td>
+              <td style="border-left: 0px solid black;">日</td>
             </tr>
-            <tr>
+            <tr height="30">
               <td rowspan="7"></td>
               <td style="border: 0px solid black;">&nbsp;</td>
               <td style="border: 0px solid black;">&nbsp;</td>
@@ -322,7 +342,7 @@ export default {
               <td style="border: 0px solid black;">&nbsp;</td>
               <td style="border: 0px solid black;">&nbsp;</td>
             </tr>
-            <tr >
+            <tr height="30">
               <td style="border: 0px solid black;">&nbsp;</td>
               <td style="border: 0px solid black;">&nbsp;</td>
               <td style="border: 0px solid black;">&nbsp;</td>
@@ -330,7 +350,7 @@ export default {
               <td style="border: 0px solid black;">&nbsp;</td>
               <td style="border: 0px solid black;">&nbsp;</td>
             </tr>
-            <tr>
+            <tr height="30">
               <td style="border: 0px solid black;">&nbsp;</td>
               <td style="border: 0px solid black;">&nbsp;</td>
               <td style="border: 0px solid black;">&nbsp;</td>
@@ -338,7 +358,7 @@ export default {
               <td style="border: 0px solid black;">&nbsp;</td>
               <td style="border: 0px solid black;">&nbsp;</td>
             </tr>
-            <tr>
+            <tr height="30">
               <td style="border: 0px solid black;">&nbsp;</td>
               <td style="border: 0px solid black;">&nbsp;</td>
               <td style="border: 0px solid black;">&nbsp;</td>
@@ -346,15 +366,15 @@ export default {
               <td style="border: 0px solid black;">&nbsp;</td>
               <td style="border: 0px solid black;">&nbsp;</td>
             </tr>
-            <tr style="text-align: center;">
+            <tr height="30" style="text-align: center;">
               <td style="border: 0px solid black;">&nbsp;</td>
               <td style="border: 0px solid black;">&nbsp;</td>
               <td style="border: 0px solid black;">&nbsp;</td>
-              <td style="border: 0px solid black;">负责人（签章）</td>
-              <td style="border: 0px solid black;">&nbsp;</td>
+              <td style="border: 0px solid black;">负责人</td>
+              <td style="border: 0px solid black;">（签章）</td>
               <td style="border: 0px solid black;">&nbsp;</td>
             </tr>
-            <tr style="text-align: center;">
+            <tr height="30" style="text-align: center;">
               <td style="border: 0px solid black;">&nbsp;</td>
               <td style="border: 0px solid black;">&nbsp;</td>
               <td style="border: 0px solid black;">&nbsp;</td>
@@ -362,7 +382,7 @@ export default {
               <td style="border: 0px solid black;">年&nbsp;&nbsp;月</td>
               <td style="border: 0px solid black;">日</td>
             </tr>
-            <tr>
+            <tr height="30">
               <td style="border: 0px solid black;">&nbsp;</td>
               <td style="border: 0px solid black;">&nbsp;</td>
               <td style="border: 0px solid black;">&nbsp;</td>
@@ -370,7 +390,7 @@ export default {
               <td style="border: 0px solid black;">&nbsp;</td>
               <td style="border: 0px solid black;">&nbsp;</td>
             </tr>
-            <tr style="text-align: center;">
+            <tr height="30" style="text-align: center;">
               <td rowspan="3">收费
                 <br/>
                 记录</td>
@@ -380,21 +400,21 @@ export default {
               <td>收款人</td>
               <td>&nbsp;</td>
             </tr>
-            <tr style="text-align: center;">
+            <tr height="30" style="text-align: center;">
               <td>补电费(电量)</td>
               <td>&nbsp;</td>
               <td colspan="2">&nbsp;</td>
               <td>&nbsp;</td>
               <td>&nbsp;</td>
             </tr>
-            <tr style="text-align: center;">
+            <tr height="30" style="text-align: center;">
               <td>违约使用电费</td>
               <td>&nbsp;</td>
               <td colspan="2">&nbsp;</td>
               <td>&nbsp;</td>
               <td>&nbsp;</td>
             </tr>
-            <tr style="text-align: center;">
+            <tr height="30" style="text-align: center;">
               <td>业务</td>
               <td>&nbsp;</td>
               <td>业务记录</td>
@@ -415,7 +435,6 @@ export default {
       this.outFile.click(); // 模拟点击实现下载
       // setTimeout(function() {
       //   // 延时释放
-      
       //   URL.revokeObjectURL(tmpDown); // 用URL.revokeObjectURL()来释放这个object URL
       // }, 100);
     },
@@ -509,6 +528,11 @@ export default {
       arrdata.forEach(data => {
         let calculateprices = 90;
         let pricesstatus = 30;
+        let Superbattery = data.moncapacity * (data.supercapacity / 100); //超容电量
+        Superbattery = this.format45(Superbattery, 1);
+        Superbattery = this.format45(Superbattery, 1);
+        let Supermoncapacity =data.moncapacity * (1+data.supercapacity / 100)
+        Supermoncapacity = this.format45(Supermoncapacity, 1);
         if (data.prices === "普通工业非优待(10kV)") {
           calculateprices = 50;
           pricesstatus = 0;
@@ -527,16 +551,10 @@ export default {
                 newList[i].children.push({
                   capacity: data.capacity,
                   moncapacity: data.moncapacity, //月运行容量
-                  actualcapacity:
-                    data.moncapacity * (1 + data.supercapacity / 100), //实际使用容量
+                  actualcapacity: Supermoncapacity, //实际使用容量
                   supercapacity: data.supercapacity, //超容比
-                  paymentele:
-                    pricesstatus *
-                    data.moncapacity *
-                    (data.supercapacity / 100), //补缴基本电费
-                  defaulttele:
-                    ((data.moncapacity * data.supercapacity) / 100) *
-                    calculateprices, //违约补缴电费
+                  paymentele: pricesstatus * Superbattery, //补缴基本电费
+                  defaulttele: Superbattery * calculateprices, //违约补缴电费
                   time: data.time // 时间
                 });
               }
@@ -557,12 +575,10 @@ export default {
             {
               capacity: data.capacity,
               moncapacity: data.moncapacity, //月运行容量
-              actualcapacity: data.moncapacity * (1 + data.supercapacity / 100), //实际使用容量
+              actualcapacity: Supermoncapacity, //实际使用容量
               supercapacity: data.supercapacity, //超容比
-              paymentele:
-                pricesstatus * data.moncapacity * (data.supercapacity / 100), //补缴基本电费
-              defaulttele:
-                data.moncapacity * (data.supercapacity / 100) * calculateprices, //违约补缴电费
+              paymentele: pricesstatus * Superbattery, //补缴基本电费
+              defaulttele: Superbattery * calculateprices, //违约补缴电费
               time: data.time // 时间
             }
           ]
